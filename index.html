@@ -634,15 +634,38 @@
       // === JAVASCRIPT SYNTAX CHECKS ===
       
       if (jsCode) {
-        // Check brace balance
+// Check brace balance with location hints
         const openBraces = (jsCode.match(/{/g) || []).length;
         const closeBraces = (jsCode.match(/}/g) || []).length;
         checks.braces = openBraces === closeBraces;
         if (!checks.braces) {
+          let braceDetail = openBraces > closeBraces 
+            ? `Missing ${openBraces - closeBraces} closing brace(s) "}"` 
+            : `Extra ${closeBraces - openBraces} closing brace(s) "}"`;
+          
+          // Try to find where the imbalance occurs
+          let depth = 0;
+          let maxDepth = 0;
+          let maxDepthLine = 0;
+          let lastOpenLine = 0;
+          lines.forEach((line, i) => {
+            const opens = (line.match(/{/g) || []).length;
+            const closes = (line.match(/}/g) || []).length;
+            if (opens > 0) lastOpenLine = i + 1;
+            depth += opens - closes;
+            if (depth > maxDepth) {
+              maxDepth = depth;
+              maxDepthLine = i + 1;
+            }
+          });
+          if (openBraces > closeBraces && lastOpenLine > 0) {
+            braceDetail += ` | Last opening brace near line ${lastOpenLine}, deepest nesting at line ${maxDepthLine}`;
+          }
+          
           issues.push({ 
             type: 'error', 
             msg: `Mismatched curly braces: ${openBraces} opening "{" vs ${closeBraces} closing "}"`,
-            detail: openBraces > closeBraces ? `Missing ${openBraces - closeBraces} closing brace(s) "}"` : `Extra ${closeBraces - openBraces} closing brace(s) "}"`,
+            detail: braceDetail,
             section: 'javascript'
           });
         }
@@ -748,6 +771,41 @@
             });
           }
         });
+
+        // Check for duplicate functions
+        const functionNames = [];
+        const duplicateFunctions = [];
+        const funcRegex = /function\s+(\w+)\s*\(/g;
+        let funcMatch;
+        while ((funcMatch = funcRegex.exec(jsCode)) !== null) {
+          const name = funcMatch[1];
+          if (functionNames.includes(name)) {
+            if (!duplicateFunctions.includes(name)) {
+              duplicateFunctions.push(name);
+            }
+          } else {
+            functionNames.push(name);
+          }
+        }
+        duplicateFunctions.forEach(fn => {
+          issues.push({
+            type: 'error',
+            msg: `Duplicate function found: ${fn}()`,
+            detail: 'This function is defined more than once - the second definition will override the first',
+            section: 'javascript'
+          });
+        });
+
+        // Check for console.log statements
+        const consoleLogCount = (jsCode.match(/console\.(log|warn|error|info|debug)\(/g) || []).length;
+        if (consoleLogCount > 0) {
+          issues.push({
+            type: 'info',
+            msg: `Found ${consoleLogCount} console statement(s)`,
+            detail: 'Consider removing debug statements before production use',
+            section: 'javascript'
+          });
+        }
 
         // Check for required variables/constants
         const requiredVars = [
