@@ -439,6 +439,44 @@
       85% { opacity: 1; transform: translateY(0); }
       100% { opacity: 0; transform: translateY(-10px); }
     }
+    .deps-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #2d1f3d;
+    }
+    .deps-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #f59e0b;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dep-item {
+      padding: 8px 12px;
+      background: rgba(245, 158, 11, 0.1);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .dep-item:last-child { margin-bottom: 0; }
+    .dep-func {
+      color: #c084fc;
+      font-family: monospace;
+      font-weight: 600;
+    }
+    .dep-arrow {
+      color: #f59e0b;
+      margin: 0 8px;
+    }
+    .dep-calls {
+      color: #a78bba;
+    }
+    .dep-calls span {
+      color: #22c55e;
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
@@ -1120,6 +1158,73 @@
       </tr>`;
     });
     html += '</tbody></table></div>';
+  }
+  
+  // === FUNCTION DEPENDENCIES ===
+  const dependencies = [];
+  const functionBodies = {};
+  
+  // Extract function bodies
+  let currentFunc = null;
+  let braceDepth = 0;
+  let funcStart = -1;
+  
+  lines.forEach((line, index) => {
+    const funcMatch = line.match(/function\s+(\w+)\s*\(/);
+    if (funcMatch && braceDepth === 0) {
+      currentFunc = funcMatch[1];
+      funcStart = index;
+      braceDepth = 0;
+    }
+    
+    if (currentFunc) {
+      const opens = (line.match(/{/g) || []).length;
+      const closes = (line.match(/}/g) || []).length;
+      braceDepth += opens - closes;
+      
+      if (braceDepth === 0 && funcStart !== index) {
+        functionBodies[currentFunc] = lines.slice(funcStart, index + 1).join('\n');
+        currentFunc = null;
+      }
+    }
+  });
+  
+  // Find which functions call which other functions
+  const allFuncNames = functions.map(f => f.name);
+  
+  allFuncNames.forEach(funcName => {
+    const body = functionBodies[funcName];
+    if (!body) return;
+    
+    const calls = [];
+    allFuncNames.forEach(otherFunc => {
+      if (otherFunc !== funcName) {
+        const callPattern = new RegExp(`\\b${otherFunc}\\s*\\(`, 'g');
+        if (callPattern.test(body)) {
+          calls.push(otherFunc);
+        }
+      }
+    });
+    
+    if (calls.length > 0) {
+      dependencies.push({ func: funcName, calls: calls });
+    }
+  });
+  
+  // Add dependencies section if we found any
+  if (dependencies.length > 0) {
+    html += '<div class="deps-section">';
+    html += '<div class="deps-title">🔗 Function Dependencies</div>';
+    
+    dependencies.sort((a, b) => b.calls.length - a.calls.length).forEach(dep => {
+      html += `<div class="dep-item">
+        <span class="dep-func">${dep.func}()</span>
+        <span class="dep-arrow">→ calls →</span>
+        <span class="dep-calls">${dep.calls.map(c => `<span>${c}()</span>`).join(', ')}</span>
+      </div>`;
+    });
+    
+    html += '</div>';
   }
   
   codeMapContent.innerHTML = html;
