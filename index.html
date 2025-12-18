@@ -1077,7 +1077,6 @@
           if (sectionIssues.length > 0) {
             html += `<div class="section-title">${sections[section]}</div>`;
             sectionIssues.forEach(issue => {
-  // Find matching plain English explanation
   let explanation = '';
   for (const [key, value] of Object.entries(plainEnglish)) {
     if (issue.msg.includes(key) || key.includes(issue.msg.split(':')[0])) {
@@ -1086,14 +1085,23 @@
     }
   }
   
-  html += `<div class="issue ${issue.type}">
-    <span class="icon">${icons[issue.type]}</span>
-    <div class="issue-content">
-      <div>${issue.msg}</div>
-      ${issue.detail ? `<div class="issue-detail">${escapeHtml(issue.detail)}</div>` : ''}
-      ${explanation ? `<div class="plain-explain">🌱 <strong>In plain English:</strong> ${explanation}</div>` : ''}
-    </div>
-  </div>`;
+  let detailHtml = '';
+  if (issue.detail) {
+    detailHtml = '<div class="issue-detail">' + escapeHtml(issue.detail) + '</div>';
+  }
+  
+  let explainHtml = '';
+  if (explanation) {
+    explainHtml = '<div class="plain-explain">🌱 <strong>In plain English:</strong> ' + explanation + '</div>';
+  }
+  
+  html += '<div class="issue ' + issue.type + '">' +
+    '<span class="icon">' + icons[issue.type] + '</span>' +
+    '<div class="issue-content">' +
+    '<div>' + issue.msg + '</div>' +
+    detailHtml +
+    explainHtml +
+    '</div></div>';
 });
           }
         });
