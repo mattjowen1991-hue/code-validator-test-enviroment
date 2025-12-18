@@ -496,8 +496,8 @@
       <button class="btn" onclick="validate()">
         <span>⚡</span> Validate Code
       </button>
-      <button class="btn btn-secondary" onclick="document.getElementById('code').value=''; updateLineCount();">
-        Clear
+      <button class="btn btn-secondary" onclick="clearAll()">
+      Clear
       </button>
       <button class="btn btn-secondary" onclick="toggleHelp()">
         <span>❓</span> Help
@@ -1350,6 +1350,22 @@ function exportReport() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+    }
+    function clearAll() {
+      // Clear the textarea
+      document.getElementById('code').value = '';
+      updateLineCount();
+      
+      // Reset results
+      document.getElementById('results').innerHTML = '<div class="empty-state">Paste your code and click validate to check for issues</div>';
+      document.getElementById('stats').innerHTML = '';
+      
+      // Hide code map
+      document.getElementById('codeMap').style.display = 'none';
+      document.getElementById('codeMapContent').innerHTML = '';
+      
+      // Hide export button
+      document.getElementById('exportBtn').style.display = 'none';
     }
   </script>
 </body>
