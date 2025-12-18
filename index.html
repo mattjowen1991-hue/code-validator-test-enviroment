@@ -464,6 +464,9 @@
       <button class="btn btn-secondary" onclick="toggleHelp()">
         <span>❓</span> Help
       </button>
+      <button class="btn btn-secondary" id="exportBtn" onclick="exportReport()" style="display:none;">
+        <span>📥</span> Export Report
+      </button>
     </div>
     
     <div class="help-section" id="helpSection" style="display:none;">
@@ -940,6 +943,7 @@
       if (issues.length === 0) {
         results.innerHTML = checksHtml + '<div class="success" style="margin-top:16px;"><span style="font-size: 20px;">✓</span> No issues found! Your code looks good.</div>';
         generateCodeMap(code);
+        document.getElementById('exportBtn').style.display = 'inline-flex';
         stats.innerHTML = '<span class="badge badge-success">All Clear</span>';
       } else {
         const icons = { error: '✕', warning: '⚠', info: 'ℹ' };
@@ -966,6 +970,7 @@
         
         results.innerHTML = html;
         generateCodeMap(code);
+        document.getElementById('exportBtn').style.display = 'inline-flex';
         stats.innerHTML = `
           ${errors > 0 ? `<span class="badge badge-error">${errors} Error${errors > 1 ? 's' : ''}</span>` : ''}
           ${warnings > 0 ? `<span class="badge badge-warning">${warnings} Warning${warnings > 1 ? 's' : ''}</span>` : ''}
@@ -1160,6 +1165,86 @@ function getFunctionDescription(name) {
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 1500);
       });
+    }
+function exportReport() {
+      const results = document.getElementById('results');
+      const codeMapContent = document.getElementById('codeMapContent');
+      
+      let report = '═══════════════════════════════════════════════════════════════\n';
+      report += '  HUBSTAFF ANALYZER CODE VALIDATOR - REPORT\n';
+      report += '  Generated: ' + new Date().toLocaleString() + '\n';
+      report += '═══════════════════════════════════════════════════════════════\n\n';
+      
+      // Get stats
+      const stats = document.getElementById('stats').textContent;
+      report += '📊 SUMMARY: ' + (stats.trim() || 'All Clear') + '\n\n';
+      
+      // Get issues
+      const issues = results.querySelectorAll('.issue');
+      if (issues.length > 0) {
+        report += '───────────────────────────────────────────────────────────────\n';
+        report += '  ISSUES FOUND\n';
+        report += '───────────────────────────────────────────────────────────────\n\n';
+        
+        issues.forEach(issue => {
+          const type = issue.classList.contains('error') ? '❌ ERROR' : 
+                       issue.classList.contains('warning') ? '⚠️ WARNING' : 'ℹ️ INFO';
+          const msg = issue.querySelector('.issue-content > div')?.textContent || '';
+          const detail = issue.querySelector('.issue-detail')?.textContent || '';
+          
+          report += `${type}: ${msg}\n`;
+          if (detail) report += `   └─ ${detail}\n`;
+          report += '\n';
+        });
+      } else {
+        report += '✅ No issues found! Code looks good.\n\n';
+      }
+      
+      // Get code map data
+      const mapStats = codeMapContent.querySelectorAll('.map-stat');
+      if (mapStats.length > 0) {
+        report += '───────────────────────────────────────────────────────────────\n';
+        report += '  CODE MAP\n';
+        report += '───────────────────────────────────────────────────────────────\n\n';
+        
+        mapStats.forEach(stat => {
+          const value = stat.querySelector('.map-stat-value')?.textContent || '0';
+          const label = stat.querySelector('.map-stat-label')?.textContent || '';
+          report += `  ${label}: ${value}\n`;
+        });
+        report += '\n';
+        
+        // Functions list
+        const funcRows = codeMapContent.querySelectorAll('.map-section:first-of-type .map-table tbody tr');
+        if (funcRows.length > 0) {
+          report += '  ⚡ FUNCTIONS:\n';
+          funcRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 3) {
+              const line = cells[0].textContent.padStart(4);
+              const name = cells[1].textContent.padEnd(30);
+              const desc = cells[2].textContent;
+              report += `     Line ${line}: ${name} - ${desc}\n`;
+            }
+          });
+          report += '\n';
+        }
+      }
+      
+      report += '═══════════════════════════════════════════════════════════════\n';
+      report += '  END OF REPORT\n';
+      report += '═══════════════════════════════════════════════════════════════\n';
+      
+      // Download the file
+      const blob = new Blob([report], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'validator-report-' + new Date().toISOString().slice(0,10) + '.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   </script>
 </body>
