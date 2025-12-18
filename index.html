@@ -412,6 +412,33 @@
       color: #a78bba;
       margin-top: 4px;
     }
+    .line-num-clickable {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .line-num-clickable:hover {
+      background: var(--accent-dim, #7c3aed);
+      color: white;
+      border-radius: 4px;
+    }
+    .copy-toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #22c55e;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 1000;
+      animation: fadeInOut 1.5s ease;
+    }
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(10px); }
+      15% { opacity: 1; transform: translateY(0); }
+      85% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-10px); }
+    }
   </style>
 </head>
 <body>
@@ -1037,7 +1064,7 @@
     html += '<table class="map-table"><thead><tr><th>Line</th><th>Function</th><th>Description</th></tr></thead><tbody>';
     functions.sort((a, b) => a.line - b.line).forEach(f => {
       html += `<tr>
-        <td class="line-num">${f.line}</td>
+        <td class="line-num line-num-clickable" onclick="copyLineNumber(${f.line})">${f.line}</td>
         <td class="func-name">${f.name}(${f.params ? '...' : ''})</td>
         <td class="description">${f.description}</td>
       </tr>`;
@@ -1052,7 +1079,7 @@
     html += '<table class="map-table"><thead><tr><th>Line</th><th>Name</th><th>Type</th></tr></thead><tbody>';
     constants.sort((a, b) => a.line - b.line).forEach(c => {
       html += `<tr>
-        <td class="line-num">${c.line}</td>
+        <td class="line-num line-num-clickable" onclick="copyLineNumber(${c.line})">${c.line}</td>
         <td class="func-name">${c.name}</td>
         <td class="description">const</td>
       </tr>`;
@@ -1067,7 +1094,7 @@
     html += '<table class="map-table"><thead><tr><th>Line</th><th>Name</th><th>Type</th></tr></thead><tbody>';
     variables.sort((a, b) => a.line - b.line).forEach(v => {
       html += `<tr>
-        <td class="line-num">${v.line}</td>
+        <td class="line-num line-num-clickable" onclick="copyLineNumber(${v.line})">${v.line}</td>
         <td class="func-name">${v.name}</td>
         <td class="description">${v.type}</td>
       </tr>`;
@@ -1082,7 +1109,7 @@
     html += '<table class="map-table"><thead><tr><th>Line</th><th>Element</th><th>Event</th></tr></thead><tbody>';
     eventHandlers.sort((a, b) => a.line - b.line).forEach(h => {
       html += `<tr>
-        <td class="line-num">${h.line}</td>
+        <td class="line-num line-num-clickable" onclick="copyLineNumber(${h.line})">${h.line}</td>
         <td class="func-name">#${h.element}</td>
         <td class="description">${h.event}</td>
       </tr>`;
@@ -1125,6 +1152,15 @@ function getFunctionDescription(name) {
   };
   return descriptions[name] || 'Custom function';
 }
+    function copyLineNumber(num) {
+      navigator.clipboard.writeText(String(num)).then(() => {
+        const toast = document.createElement('div');
+        toast.className = 'copy-toast';
+        toast.textContent = `Copied line ${num} to clipboard`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 1500);
+      });
+    }
   </script>
 </body>
 </html>
