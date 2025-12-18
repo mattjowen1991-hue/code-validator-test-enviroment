@@ -853,6 +853,7 @@
 
       if (issues.length === 0) {
         results.innerHTML = checksHtml + '<div class="success" style="margin-top:16px;"><span style="font-size: 20px;">✓</span> No issues found! Your code looks good.</div>';
+        generateCodeMap(code);
         stats.innerHTML = '<span class="badge badge-success">All Clear</span>';
       } else {
         const icons = { error: '✕', warning: '⚠', info: 'ℹ' };
@@ -878,12 +879,193 @@
         });
         
         results.innerHTML = html;
+        generateCodeMap(code);
         stats.innerHTML = `
           ${errors > 0 ? `<span class="badge badge-error">${errors} Error${errors > 1 ? 's' : ''}</span>` : ''}
           ${warnings > 0 ? `<span class="badge badge-warning">${warnings} Warning${warnings > 1 ? 's' : ''}</span>` : ''}
         `;
       }
     }
+    function generateCodeMap(code) {
+  const codeMap = document.getElementById('codeMap');
+  const codeMapContent = document.getElementById('codeMapContent');
+  
+  const scriptMatch = code.match(/<script>([\s\S]*?)<\/script>/);
+  const jsCode = scriptMatch ? scriptMatch[1] : '';
+  
+  if (!jsCode.trim()) {
+    codeMap.style.display = 'none';
+    return;
+  }
+  
+  const lines = jsCode.split('\n');
+  const functions = [];
+  const constants = [];
+  const variables = [];
+  const eventHandlers = [];
+  
+  lines.forEach((line, index) => {
+    const lineNum = index + 1;
+    
+    // Find function declarations
+    const funcMatch = line.match(/function\s+(\w+)\s*\(([^)]*)\)/);
+    if (funcMatch) {
+      functions.push({
+        name: funcMatch[1],
+        params: funcMatch[2].trim(),
+        line: lineNum,
+        description: getFunctionDescription(funcMatch[1])
+      });
+    }
+    
+    // Find arrow functions assigned to variables
+    const arrowMatch = line.match(/(?:const|let|var)\s+(\w+)\s*=\s*(?:\([^)]*\)|[^=])\s*=>/);
+    if (arrowMatch) {
+      functions.push({
+        name: arrowMatch[1],
+        params: '...',
+        line: lineNum,
+        description: 'Arrow function'
+      });
+    }
+    
+    // Find constants (but not inside functions)
+    const constMatch = line.match(/^[\t ]*const\s+([A-Z_][A-Z0-9_]*)\s*=/);
+    if (constMatch) {
+      constants.push({
+        name: constMatch[1],
+        line: lineNum,
+        type: 'const'
+      });
+    }
+    
+    // Find top-level let/var declarations
+    const varMatch = line.match(/^[\t ]*(?:let|var)\s+(\w+)\s*=/);
+    if (varMatch && !line.includes('=>')) {
+      variables.push({
+        name: varMatch[1],
+        line: lineNum,
+        type: line.includes('let') ? 'let' : 'var'
+      });
+    }
+    
+    // Find event handlers
+    const handlerMatch = line.match(/\$\(['"](\w+)['"]\)\.(onclick|onchange|oninput|onkeyup)/);
+    if (handlerMatch) {
+      eventHandlers.push({
+        element: handlerMatch[1],
+        event: handlerMatch[2],
+        line: lineNum
+      });
+    }
+  });
+  
+  // Build the HTML
+  let html = '';
+  
+  // Stats
+  html += '<div class="map-stats">';
+  html += `<div class="map-stat"><div class="map-stat-value">${functions.length}</div><div class="map-stat-label">Functions</div></div>`;
+  html += `<div class="map-stat"><div class="map-stat-value">${constants.length}</div><div class="map-stat-label">Constants</div></div>`;
+  html += `<div class="map-stat"><div class="map-stat-value">${variables.length}</div><div class="map-stat-label">Variables</div></div>`;
+  html += `<div class="map-stat"><div class="map-stat-value">${eventHandlers.length}</div><div class="map-stat-label">Event Handlers</div></div>`;
+  html += '</div>';
+  
+  // Functions table
+  if (functions.length > 0) {
+    html += '<div class="map-section">';
+    html += '<div class="map-section-title">⚡ Functions</div>';
+    html += '<table class="map-table"><thead><tr><th>Line</th><th>Function</th><th>Description</th></tr></thead><tbody>';
+    functions.sort((a, b) => a.line - b.line).forEach(f => {
+      html += `<tr>
+        <td class="line-num">${f.line}</td>
+        <td class="func-name">${f.name}(${f.params ? '...' : ''})</td>
+        <td class="description">${f.description}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+  
+  // Constants table
+  if (constants.length > 0) {
+    html += '<div class="map-section">';
+    html += '<div class="map-section-title">📌 Constants</div>';
+    html += '<table class="map-table"><thead><tr><th>Line</th><th>Name</th><th>Type</th></tr></thead><tbody>';
+    constants.sort((a, b) => a.line - b.line).forEach(c => {
+      html += `<tr>
+        <td class="line-num">${c.line}</td>
+        <td class="func-name">${c.name}</td>
+        <td class="description">const</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+  
+  // Variables table
+  if (variables.length > 0) {
+    html += '<div class="map-section">';
+    html += '<div class="map-section-title">📦 Variables</div>';
+    html += '<table class="map-table"><thead><tr><th>Line</th><th>Name</th><th>Type</th></tr></thead><tbody>';
+    variables.sort((a, b) => a.line - b.line).forEach(v => {
+      html += `<tr>
+        <td class="line-num">${v.line}</td>
+        <td class="func-name">${v.name}</td>
+        <td class="description">${v.type}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+  
+  // Event handlers table
+  if (eventHandlers.length > 0) {
+    html += '<div class="map-section">';
+    html += '<div class="map-section-title">🖱️ Event Handlers</div>';
+    html += '<table class="map-table"><thead><tr><th>Line</th><th>Element</th><th>Event</th></tr></thead><tbody>';
+    eventHandlers.sort((a, b) => a.line - b.line).forEach(h => {
+      html += `<tr>
+        <td class="line-num">${h.line}</td>
+        <td class="func-name">#${h.element}</td>
+        <td class="description">${h.event}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+  
+  codeMapContent.innerHTML = html;
+  codeMap.style.display = 'block';
+}
+
+function getFunctionDescription(name) {
+  const descriptions = {
+    'translateToPlainEnglish': 'Converts log messages to human-readable format',
+    'generateSummary': 'Creates the analysis summary from parsed data',
+    'analyze': 'Main entry point - parses and analyzes log input',
+    'render': 'Renders the analysis results to the UI',
+    'renderTimeline': 'Builds the visual timeline of events',
+    'filterLogs': 'Filters log entries by type/category',
+    'parseTimestamp': 'Extracts and parses timestamps from log lines',
+    'search': 'Handles the search functionality',
+    'checkLocationPatterns': 'Detects iOS/location-related log patterns',
+    'escapeHtml': 'Sanitizes HTML to prevent XSS',
+    'formatDuration': 'Formats time durations for display',
+    'formatTime': 'Formats timestamps for display',
+    'debounce': 'Utility to limit function call frequency',
+    'throttle': 'Utility to rate-limit function calls',
+    '$': 'DOM element selector shorthand',
+    'showStatus': 'Displays status messages to user',
+    'hideStatus': 'Hides the status message',
+    'copyToClipboard': 'Copies text to clipboard',
+    'downloadReport': 'Exports analysis as downloadable file',
+    'toggleSection': 'Expands/collapses UI sections',
+    'showModal': 'Displays a modal dialog',
+    'hideModal': 'Closes a modal dialog',
+    'updateLineCount': 'Updates the line counter display',
+    'toggleHelp': 'Shows/hides the help section',
+    'validate': 'Main validation function',
+    'generateCodeMap': 'Generates the code structure map'
+  };
+  return descriptions[name] || 'Custom function';
+}
   </script>
 </body>
 </html>
