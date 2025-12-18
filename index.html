@@ -477,6 +477,53 @@
       color: #22c55e;
       font-family: monospace;
     }
+    .plain-english-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 12px;
+  color: #a78bba;
+}
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: #2d1f3d;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle-switch.active {
+  background: #7c3aed;
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.toggle-switch.active::after {
+  transform: translateX(20px);
+}
+.plain-explain {
+  display: none;
+  font-size: 12px;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.plain-english-mode .plain-explain {
+  display: block;
+}
   </style>
 </head>
 <body>
@@ -493,19 +540,23 @@
     </div>
     
     <div class="btn-row">
-      <button class="btn" onclick="validate()">
-        <span>⚡</span> Validate Code
-      </button>
-      <button class="btn btn-secondary" onclick="clearAll()">
-      Clear
-      </button>
-      <button class="btn btn-secondary" onclick="toggleHelp()">
-        <span>❓</span> Help
-      </button>
-      <button class="btn btn-secondary" id="exportBtn" onclick="exportReport()" style="display:none;">
-        <span>📥</span> Export Report
-      </button>
-    </div>
+  <button class="btn" onclick="validate()">
+    <span>⚡</span> Validate Code
+  </button>
+  <button class="btn btn-secondary" onclick="clearAll()">
+    Clear
+  </button>
+  <button class="btn btn-secondary" onclick="toggleHelp()">
+    <span>❓</span> Help
+  </button>
+  <button class="btn btn-secondary" id="exportBtn" onclick="exportReport()" style="display:none;">
+    <span>📥</span> Export Report
+  </button>
+  <div class="plain-english-toggle">
+    <span>🌱 Beginner Mode</span>
+    <div class="toggle-switch" id="plainToggle" onclick="togglePlainEnglish()"></div>
+  </div>
+</div>
     
     <div class="help-section" id="helpSection" style="display:none;">
       <div class="help-header">
@@ -662,6 +713,14 @@
       const help = document.getElementById('helpSection');
       help.style.display = help.style.display === 'none' ? 'block' : 'none';
     }
+
+    function togglePlainEnglish() {
+  const toggle = document.getElementById('plainToggle');
+  const container = document.querySelector('.container');
+  toggle.classList.toggle('active');
+  container.classList.toggle('plain-english-mode');
+}
+
 
     function escapeHtml(str) {
       return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -985,6 +1044,29 @@
         stats.innerHTML = '<span class="badge badge-success">All Clear</span>';
       } else {
         const icons = { error: '✕', warning: '⚠', info: 'ℹ' };
+        const plainEnglish = {
+  'Missing <!DOCTYPE html>': 'Every HTML file needs to start with this special line. It tells the browser "this is a modern webpage."',
+  'Missing or unclosed <html> tag': 'Your code needs an <html> tag at the start and </html> at the end. Think of it like the cover of a book — everything goes inside it.',
+  'Missing or unclosed <head> tag': 'The <head> section is where you put settings and info about your page (like the title). It needs both an opening <head> and closing </head>.',
+  'Missing or unclosed <body> tag': 'The <body> is where all your visible content goes. Make sure you have both <body> at the start and </body> at the end.',
+  'Missing or unclosed <script> tag': 'JavaScript code goes between <script> and </script>. If one is missing, the browser won\'t know where your code starts or ends.',
+  'Mismatched curly braces': 'Curly braces { } are like containers in JavaScript. Every opening { needs a closing }. Count them — they should match!',
+  'Mismatched parentheses': 'Parentheses ( ) come in pairs. If you open one, you must close it. This often happens when writing function calls or if statements.',
+  'Mismatched square brackets': 'Square brackets [ ] are used for lists (arrays). Every [ needs a matching ]. Check your arrays!',
+  'Unclosed template literal': 'Template literals use backticks ` (the key above Tab). You opened one but forgot to close it. They need to be in pairs.',
+  'Possible unclosed single quote': 'Strings use quotes (\' or "). It looks like you might have started a string but didn\'t finish it. Check for missing quotes.',
+  'Trailing comma before closing bracket': 'You have a comma right before a ]. Like: [1, 2, 3,] — that last comma shouldn\'t be there.',
+  'Trailing comma before closing parenthesis': 'You have a comma right before a ). Like: doThing(a, b,) — remove that trailing comma.',
+  'Double semicolon found': 'You have ;; somewhere. Usually harmless, but might mean you accidentally deleted something between them.',
+  'Missing required function': 'This function is needed for the analyzer to work. It might have been accidentally deleted or the name was changed.',
+  'Duplicate function found': 'You have two functions with the same name. The second one will overwrite the first, which probably isn\'t what you want.',
+  'console statement': 'console.log() statements are for debugging. They\'re fine while building, but you might want to remove them from the final version.',
+  'Missing required variable': 'This variable needs to exist for the code to work. Look for where it should be defined (usually near the top of the script).',
+  'Missing event handler': 'Event handlers make buttons work. Without this, clicking the button won\'t do anything.',
+  'Missing checkLocationPatterns': 'This function handles iOS location features. If you need those features, make sure this function exists.',
+  'LOCATION_PATTERNS defined but checkLocationPatterns': 'You set up location patterns but never actually use them. The function that checks for them needs to be called.',
+  'Missing required HTML element': 'The JavaScript is looking for an element with this ID, but it doesn\'t exist in your HTML. The code will break when it tries to find it.'
+};
         const sections = { structure: 'HTML Structure', javascript: 'JavaScript Syntax', analyzer: 'Analyzer Functions', html: 'HTML Elements' };
         
         // Group by section
@@ -995,16 +1077,24 @@
           if (sectionIssues.length > 0) {
             html += `<div class="section-title">${sections[section]}</div>`;
             sectionIssues.forEach(issue => {
-              html += `<div class="issue ${issue.type}">
-                <span class="icon">${icons[issue.type]}</span>
-                <div class="issue-content">
-                  <div>${issue.msg}</div>
-                  ${issue.detail ? `<div class="issue-detail">${escapeHtml(issue.detail)}</div>` : ''}
-                </div>
-              </div>`;
-            });
-          }
-        });
+  // Find matching plain English explanation
+  let explanation = '';
+  for (const [key, value] of Object.entries(plainEnglish)) {
+    if (issue.msg.includes(key) || key.includes(issue.msg.split(':')[0])) {
+      explanation = value;
+      break;
+    }
+  }
+  
+  html += `<div class="issue ${issue.type}">
+    <span class="icon">${icons[issue.type]}</span>
+    <div class="issue-content">
+      <div>${issue.msg}</div>
+      ${issue.detail ? `<div class="issue-detail">${escapeHtml(issue.detail)}</div>` : ''}
+      ${explanation ? `<div class="plain-explain">🌱 <strong>In plain English:</strong> ${explanation}</div>` : ''}
+    </div>
+  </div>`;
+});
         
         results.innerHTML = html;
         generateCodeMap(code);
@@ -1015,6 +1105,8 @@
         `;
       }
     }
+}
+  
     function generateCodeMap(code) {
   const codeMap = document.getElementById('codeMap');
   const codeMapContent = document.getElementById('codeMapContent');
