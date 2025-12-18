@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hubstaff Analyzer Code Validator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0a1a 0%, #1a1025 100%);
+      min-height: 100vh;
+      padding: 24px;
+      color: #e4e4e7;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      background: linear-gradient(90deg, #a855f7, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: #a78bba; margin-bottom: 24px; font-size: 14px; }
+    .editor-container {
+      background: #12081c;
+      border-radius: 12px;
+      border: 1px solid #2d1f3d;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .editor-header {
+      background: #1a1025;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #2d1f3d;
+    }
+    .editor-title { font-size: 13px; color: #a78bba; font-weight: 500; }
+    .line-count { font-size: 12px; color: #7c3aed; }
+    textarea {
+      width: 100%;
+      height: 300px;
+      background: #050208;
+      border: none;
+      color: #e2e8f0;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+      padding: 16px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    textarea:focus { outline: none; border: 1px solid #7c3aed; }
+    textarea::placeholder { color: #4a3a5a; }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4); }
+    .btn-secondary {
+      background: #1a1025;
+      border: 1px solid #2d1f3d;
+    }
+    .btn-secondary:hover { border-color: #7c3aed; box-shadow: none; }
+    .results {
+      margin-top: 24px;
+      background: #12081c;
+      border-radius: 12px;
+      border: 1px solid #2d1f3d;
+      overflow: hidden;
+    }
+    .results-header {
+      background: #1a1025;
+      padding: 12px 16px;
+      border-bottom: 1px solid #2d1f3d;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .results-content { padding: 16px; max-height: 400px; overflow-y: auto; }
+    .issue {
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .issue:last-child { margin-bottom: 0; }
+    .error { background: rgba(239, 68, 68, 0.15); border-left: 3px solid #ef4444; }
+    .warning { background: rgba(245, 158, 11, 0.15); border-left: 3px solid #f59e0b; }
+    .info { background: rgba(139, 92, 246, 0.15); border-left: 3px solid #8b5cf6; }
+    .icon { font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+    .error .icon { color: #ef4444; }
+    .warning .icon { color: #f59e0b; }
+    .info .icon { color: #8b5cf6; }
+    .success {
+      background: rgba(34, 197, 94, 0.15);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #4ade80;
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-error { background: #ef4444; color: white; }
+    .badge-warning { background: #f59e0b; color: #1a1a2e; }
+    .badge-success { background: #22c55e; color: white; }
+    .empty-state { color: #64748b; text-align: center; padding: 32px; }
+    .stats { display: flex; gap: 8px; margin-left: auto; }
+    .issue-detail { 
+      font-family: monospace; 
+      font-size: 11px; 
+      background: rgba(0,0,0,0.3); 
+      padding: 8px; 
+      border-radius: 4px; 
+      margin-top: 8px;
+      color: #c084fc;
+      word-break: break-all;
+    }
+    .issue-content { flex: 1; }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #7c3aed;
+      margin: 16px 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #2d1f3d;
+    }
+    .section-title:first-child { margin-top: 0; }
+    .quick-checks {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+      padding: 16px;
+      background: #1a1025;
+      border-radius: 8px;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .check-pass { color: #22c55e; }
+    .check-fail { color: #ef4444; }
+    .check-warn { color: #f59e0b; }
+    
+    /* Help Section Styles */
+    .help-section {
+      margin-top: 24px;
+      background: #12081c;
+      border-radius: 12px;
+      border: 1px solid #7c3aed;
+      overflow: hidden;
+    }
+    .help-header {
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .help-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      margin: 0;
+    }
+    .help-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .help-close:hover { background: rgba(255,255,255,0.3); }
+    .help-content {
+      padding: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .help-content h3 {
+      color: #c084fc;
+      font-size: 14px;
+      margin: 20px 0 10px 0;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #2d1f3d;
+    }
+    .help-content h3:first-child { margin-top: 0; }
+    .help-content p {
+      color: #a78bba;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+    .help-content ul, .help-content ol {
+      color: #a78bba;
+      font-size: 13px;
+      line-height: 1.8;
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+    .help-content li { margin-bottom: 4px; }
+    .help-content code {
+      background: #1a1025;
+      color: #c084fc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .help-content kbd {
+      background: #2d1f3d;
+      color: #e4e4e7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      border: 1px solid #4a3a5a;
+    }
+    .help-category {
+      background: #1a1025;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .help-category h4 {
+      color: #e4e4e7;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .help-category p, .help-category ul {
+      margin-bottom: 0;
+    }
+    .code-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px 16px;
+    }
+    .result-types {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 12px 0;
+    }
+    .result-type {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #a78bba;
+    }
+    .badge-info { background: #8b5cf6; color: white; }
+    .issues-table {
+      width: 100%;
+      font-size: 13px;
+      border-collapse: collapse;
+      margin: 12px 0;
+    }
+    .issues-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #2d1f3d;
+      color: #a78bba;
+    }
+    .issues-table td:first-child {
+      color: #e4e4e7;
+      width: 40%;
+    }
+    .issues-table tr:last-child td { border-bottom: none; }
+    
+    /* Code Map Styles */
+    .code-map {
+      margin-top: 24px;
+      background: #12081c;
+      border-radius: 12px;
+      border: 1px solid #22c55e;
+      overflow: hidden;
+    }
+    .code-map-header {
+      background: linear-gradient(135deg, #166534, #22c55e);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .code-map-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      margin: 0;
+    }
+    .code-map-content {
+      padding: 20px;
+    }
+    .success-message {
+      background: rgba(34, 197, 94, 0.15);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .success-message .success-icon {
+      font-size: 24px;
+      line-height: 1;
+    }
+    .success-message h3 {
+      color: #4ade80;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+    .success-message p {
+      color: #86efac;
+      font-size: 13px;
+      margin: 0;
+      line-height: 1.5;
+    }
+    .map-section {
+      margin-bottom: 16px;
+    }
+    .map-section:last-child { margin-bottom: 0; }
+    .map-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #c084fc;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .map-table {
+      width: 100%;
+      font-size: 12px;
+      border-collapse: collapse;
+      background: #1a1025;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .map-table th {
+      background: #2d1f3d;
+      color: #a78bba;
+      font-weight: 600;
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .map-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #2d1f3d;
+      color: #e4e4e7;
+    }
+    .map-table tr:last-child td { border-bottom: none; }
+    .map-table tr:hover td { background: rgba(124, 58, 237, 0.1); }
+    .map-table .line-num {
+      color: #7c3aed;
+      font-family: monospace;
+      font-weight: 600;
+    }
+    .map-table .func-name {
+      color: #c084fc;
+      font-family: monospace;
+    }
+    .map-table .description {
+      color: #a78bba;
+      font-size: 11px;
+    }
+    .map-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .map-stat {
+      background: #1a1025;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .map-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #c084fc;
+    }
+    .map-stat-label {
+      font-size: 11px;
+      color: #a78bba;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔮 Hubstaff Analyzer Code Validator</h1>
+    <p class="subtitle">Paste your modified HTML code to check for common issues before saving</p>
+    
+    <div class="editor-container">
+      <div class="editor-header">
+        <span class="editor-title">PASTE YOUR CODE</span>
+        <span class="line-count" id="lineCount">0 lines</span>
+      </div>
+      <textarea id="code" placeholder="Paste your Hubstaff Log Analyzer HTML code here..."></textarea>
+    </div>
+    
+    <div class="btn-row">
+      <button class="btn" onclick="validate()">
+        <span>⚡</span> Validate Code
+      </button>
+      <button class="btn btn-secondary" onclick="document.getElementById('code').value=''; updateLineCount();">
+        Clear
+      </button>
+      <button class="btn btn-secondary" onclick="toggleHelp()">
+        <span>❓</span> Help
+      </button>
+    </div>
+    
+    <div class="help-section" id="helpSection" style="display:none;">
+      <div class="help-header">
+        <h2>📖 How to Use This Validator</h2>
+        <button class="help-close" onclick="toggleHelp()">✕</button>
+      </div>
+      
+      <div class="help-content">
+        <h3>What is this?</h3>
+        <p>This validator is designed specifically for the <strong>Hubstaff Client Log Analyzer</strong>. It checks your code for common issues that can occur when manually adding or editing code blocks.</p>
+        
+        <h3>When to use it</h3>
+        <ul>
+          <li>After adding a new code block to the analyzer</li>
+          <li>After making any manual edits</li>
+          <li>When something stops working and you're not sure why</li>
+          <li>Before saving your changes</li>
+        </ul>
+        
+        <h3>How to use it</h3>
+        <ol>
+          <li>Open your modified <code>hubstaff-log-analyzer.html</code> file in a text editor</li>
+          <li>Select all (<kbd>Ctrl+A</kbd> / <kbd>Cmd+A</kbd>) and copy (<kbd>Ctrl+C</kbd> / <kbd>Cmd+C</kbd>)</li>
+          <li>Paste the entire code into the text area above</li>
+          <li>Click <strong>⚡ Validate Code</strong></li>
+          <li>Review and fix any errors shown</li>
+        </ol>
+        
+        <h3>What it checks</h3>
+        
+        <div class="help-category">
+          <h4>🏗️ HTML Structure</h4>
+          <p>Ensures basic HTML tags are present and properly closed: DOCTYPE, html, head, body, and script tags.</p>
+        </div>
+        
+        <div class="help-category">
+          <h4>⚙️ JavaScript Syntax</h4>
+          <ul>
+            <li><strong>Brace balance</strong> - Every <code>{</code> needs a matching <code>}</code></li>
+            <li><strong>Parentheses balance</strong> - Every <code>(</code> needs a matching <code>)</code></li>
+            <li><strong>Bracket balance</strong> - Every <code>[</code> needs a matching <code>]</code></li>
+            <li><strong>Template literals</strong> - Backticks <code>`</code> must be paired</li>
+            <li><strong>String quotes</strong> - Checks for obviously unclosed strings</li>
+            <li><strong>Common typos</strong> - Trailing commas, double semicolons, etc.</li>
+          </ul>
+        </div>
+        
+        <div class="help-category">
+          <h4>🔮 Analyzer Functions</h4>
+          <p>Verifies that all required functions exist:</p>
+          <ul class="code-list">
+            <li><code>translateToPlainEnglish()</code></li>
+            <li><code>generateSummary()</code></li>
+            <li><code>analyze()</code></li>
+            <li><code>render()</code></li>
+            <li><code>renderTimeline()</code></li>
+            <li><code>filterLogs()</code></li>
+            <li><code>parseTimestamp()</code></li>
+            <li><code>search()</code></li>
+          </ul>
+        </div>
+        
+        <div class="help-category">
+          <h4>📍 iOS/Location Features</h4>
+          <p>Checks that location-related code is properly integrated:</p>
+          <ul>
+            <li><code>LOCATION_PATTERNS</code> constant exists</li>
+            <li><code>checkLocationPatterns()</code> function exists</li>
+            <li>Function is called in <code>translateToPlainEnglish()</code></li>
+          </ul>
+        </div>
+        
+        <div class="help-category">
+          <h4>🖥️ HTML Elements</h4>
+          <p>Confirms all required UI element IDs are present (logInput, analyzeBtn, summaryCard, etc.)</p>
+        </div>
+        
+        <h3>Understanding the results</h3>
+        <div class="result-types">
+          <div class="result-type">
+            <span class="badge badge-error">Error</span>
+            <span>Must be fixed - code will likely break</span>
+          </div>
+          <div class="result-type">
+            <span class="badge badge-warning">Warning</span>
+            <span>Should be reviewed - may cause issues</span>
+          </div>
+          <div class="result-type">
+            <span class="badge badge-info">Info</span>
+            <span>Suggestion - code may work but could be improved</span>
+          </div>
+        </div>
+        
+        <h3>Common issues when adding code blocks</h3>
+        <table class="issues-table">
+          <tr>
+            <td><strong>Mismatched braces</strong></td>
+            <td>You added a function but missed a closing <code>}</code></td>
+          </tr>
+          <tr>
+            <td><strong>Unclosed string</strong></td>
+            <td>A quote character <code>'</code> or <code>"</code> is missing</td>
+          </tr>
+          <tr>
+            <td><strong>Missing function</strong></td>
+            <td>Code was accidentally deleted or overwritten</td>
+          </tr>
+          <tr>
+            <td><strong>Template literal issue</strong></td>
+            <td>A backtick <code>`</code> was lost when pasting</td>
+          </tr>
+        </table>
+        
+        <h3>Tips</h3>
+        <ul>
+          <li>Always validate <strong>before</strong> testing in the browser</li>
+          <li>If you see many errors, you may have pasted in the wrong location</li>
+          <li>Keep a backup of the working version before making changes</li>
+          <li>Use <kbd>Ctrl+F</kbd> / <kbd>Cmd+F</kbd> in your editor to find the exact insertion points</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="results">
+      <div class="results-header">
+        <span style="font-weight: 500;">Validation Results</span>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="results-content" id="results">
+        <div class="empty-state">Paste your code and click validate to check for issues</div>
+      </div>
+    </div>
+    
+    <div class="code-map" id="codeMap" style="display:none;">
+      <div class="code-map-header">
+        <span style="font-size:20px;">🗺️</span>
+        <h2>Code Map</h2>
+      </div>
+      <div class="code-map-content" id="codeMapContent">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const textarea = document.getElementById('code');
+    textarea.addEventListener('input', updateLineCount);
+    
+    function updateLineCount() {
+      const lines = textarea.value.split('\n').length;
+      document.getElementById('lineCount').textContent = lines.toLocaleString() + ' lines';
+    }
+    
+    function toggleHelp() {
+      const help = document.getElementById('helpSection');
+      help.style.display = help.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function validate() {
+      const code = document.getElementById('code').value;
+      const results = document.getElementById('results');
+      const stats = document.getElementById('stats');
+      const issues = [];
+      const checks = {};
+
+      if (!code.trim()) {
+        results.innerHTML = '<div class="empty-state">Please paste your code to validate</div>';
+        stats.innerHTML = '';
+        return;
+      }
+
+      // Extract just the JavaScript portion
+      const scriptMatch = code.match(/<script>([\s\S]*?)<\/script>/);
+      const jsCode = scriptMatch ? scriptMatch[1] : '';
+      
+      // === STRUCTURE CHECKS ===
+      
+      // Check basic HTML structure
+      checks.doctype = code.includes('<!DOCTYPE html>');
+      checks.htmlTag = /<html[\s>]/i.test(code) && /<\/html>/i.test(code);
+      checks.headTag = /<head[\s>]/i.test(code) && /<\/head>/i.test(code);
+      checks.bodyTag = /<body[\s>]/i.test(code) && /<\/body>/i.test(code);
+      checks.scriptTag = /<script>/.test(code) && /<\/script>/.test(code);
+      
+      if (!checks.doctype) issues.push({ type: 'error', msg: 'Missing <!DOCTYPE html>', section: 'structure' });
+      if (!checks.htmlTag) issues.push({ type: 'error', msg: 'Missing or unclosed <html> tag', section: 'structure' });
+      if (!checks.headTag) issues.push({ type: 'error', msg: 'Missing or unclosed <head> tag', section: 'structure' });
+      if (!checks.bodyTag) issues.push({ type: 'error', msg: 'Missing or unclosed <body> tag', section: 'structure' });
+      if (!checks.scriptTag) issues.push({ type: 'error', msg: 'Missing or unclosed <script> tag', section: 'structure' });
+
+      // === JAVASCRIPT SYNTAX CHECKS ===
+      
+      if (jsCode) {
+        // Check brace balance
+        const openBraces = (jsCode.match(/{/g) || []).length;
+        const closeBraces = (jsCode.match(/}/g) || []).length;
+        checks.braces = openBraces === closeBraces;
+        if (!checks.braces) {
+          issues.push({ 
+            type: 'error', 
+            msg: `Mismatched curly braces: ${openBraces} opening "{" vs ${closeBraces} closing "}"`,
+            detail: openBraces > closeBraces ? `Missing ${openBraces - closeBraces} closing brace(s) "}"` : `Extra ${closeBraces - openBraces} closing brace(s) "}"`,
+            section: 'javascript'
+          });
+        }
+
+        // Check parentheses balance
+        const openParens = (jsCode.match(/\(/g) || []).length;
+        const closeParens = (jsCode.match(/\)/g) || []).length;
+        checks.parens = openParens === closeParens;
+        if (!checks.parens) {
+          issues.push({ 
+            type: 'error', 
+            msg: `Mismatched parentheses: ${openParens} opening "(" vs ${closeParens} closing ")"`,
+            detail: openParens > closeParens ? `Missing ${openParens - closeParens} closing parenthesis ")"` : `Extra ${closeParens - openParens} closing parenthesis ")"`,
+            section: 'javascript'
+          });
+        }
+
+        // Check bracket balance
+        const openBrackets = (jsCode.match(/\[/g) || []).length;
+        const closeBrackets = (jsCode.match(/\]/g) || []).length;
+        checks.brackets = openBrackets === closeBrackets;
+        if (!checks.brackets) {
+          issues.push({ 
+            type: 'error', 
+            msg: `Mismatched square brackets: ${openBrackets} opening "[" vs ${closeBrackets} closing "]"`,
+            section: 'javascript'
+          });
+        }
+
+        // Check for unclosed template literals
+        const templateLiterals = (jsCode.match(/`/g) || []).length;
+        checks.templates = templateLiterals % 2 === 0;
+        if (!checks.templates) {
+          issues.push({ 
+            type: 'error', 
+            msg: `Unclosed template literal - odd number of backticks (${templateLiterals})`,
+            detail: 'Look for a missing ` character in template strings',
+            section: 'javascript'
+          });
+        }
+
+        // Check for unclosed strings
+        const lines = jsCode.split('\n');
+        lines.forEach((line, i) => {
+          // Skip lines that are likely regex or comments
+          if (line.trim().startsWith('//') || line.trim().startsWith('*')) return;
+          
+          // Count quotes (basic check - not perfect but catches common issues)
+          const singleQuotes = (line.match(/'/g) || []).length;
+          const doubleQuotes = (line.match(/"/g) || []).length;
+          
+          // Check for obviously broken strings (odd quotes without escape context)
+          if (singleQuotes % 2 !== 0 && !line.includes("\\'") && !line.includes('`')) {
+            // Could be intentional in some cases, so just warn
+            if (!line.includes("'s") && !line.includes("n't") && !line.includes("'t")) {
+              issues.push({ 
+                type: 'warning', 
+                msg: `Possible unclosed single quote on line ~${i + 1}`,
+                detail: line.trim().slice(0, 80),
+                section: 'javascript'
+              });
+            }
+          }
+        });
+
+        // Check for common syntax errors
+        const syntaxPatterns = [
+          { pattern: /,\s*\]/, msg: 'Trailing comma before closing bracket "]"' },
+          { pattern: /,\s*\)/, msg: 'Trailing comma before closing parenthesis ")"' },
+          { pattern: /\)\s*{[^}]*\)\s*{/, msg: 'Possible missing closing brace between functions' },
+          { pattern: /}\s*else\s*{[^}]*}\s*else/, msg: 'Possible duplicate else clause' },
+          { pattern: /;;/, msg: 'Double semicolon found (usually harmless but may indicate missing code)' },
+        ];
+
+        syntaxPatterns.forEach(({ pattern, msg }) => {
+          if (pattern.test(jsCode)) {
+            issues.push({ type: 'warning', msg, section: 'javascript' });
+          }
+        });
+
+        // === HUBSTAFF ANALYZER SPECIFIC CHECKS ===
+        
+        // Check for required functions
+        const requiredFunctions = [
+          'translateToPlainEnglish',
+          'generateSummary', 
+          'analyze',
+          'render',
+          'renderTimeline',
+          'filterLogs',
+          'parseTimestamp',
+          'search'
+        ];
+        
+        requiredFunctions.forEach(fn => {
+          const hasFunction = new RegExp(`function\\s+${fn}\\s*\\(`).test(jsCode);
+          if (!hasFunction) {
+            issues.push({ 
+              type: 'error', 
+              msg: `Missing required function: ${fn}()`,
+              detail: 'This function is essential for the analyzer to work',
+              section: 'analyzer'
+            });
+          }
+        });
+
+        // Check for required variables/constants
+        const requiredVars = [
+          { name: 'LOCATION_PATTERNS', pattern: /const\s+LOCATION_PATTERNS\s*=/ },
+          { name: 'NOISE_PATTERNS', pattern: /const\s+NOISE_PATTERNS\s*=/ },
+          { name: 'SIGNAL_PATTERNS', pattern: /const\s+SIGNAL_PATTERNS\s*=/ },
+          { name: 'allLines', pattern: /let\s+allLines\s*=/ },
+          { name: 'parsedData', pattern: /let\s+parsedData\s*=/ },
+        ];
+
+        requiredVars.forEach(({ name, pattern }) => {
+          if (!pattern.test(jsCode)) {
+            issues.push({ 
+              type: 'error', 
+              msg: `Missing required variable: ${name}`,
+              section: 'analyzer'
+            });
+          }
+        });
+
+        // Check for required event handlers
+        const requiredHandlers = [
+          { name: 'analyzeBtn.onclick', pattern: /\$\(['"]analyzeBtn['"]\)\.onclick/ },
+          { name: 'clearBtn.onclick', pattern: /\$\(['"]clearBtn['"]\)\.onclick/ },
+          { name: 'searchBtn.onclick', pattern: /\$\(['"]searchBtn['"]\)\.onclick/ },
+          { name: 'helpBtn.onclick', pattern: /\$\(['"]helpBtn['"]\)\.onclick/ },
+        ];
+
+        requiredHandlers.forEach(({ name, pattern }) => {
+          if (!pattern.test(jsCode)) {
+            issues.push({ 
+              type: 'warning', 
+              msg: `Missing event handler: ${name}`,
+              detail: 'UI buttons may not work without this',
+              section: 'analyzer'
+            });
+          }
+        });
+
+        // Check for checkLocationPatterns function (iOS feature)
+        if (!jsCode.includes('function checkLocationPatterns')) {
+          issues.push({ 
+            type: 'warning', 
+            msg: 'Missing checkLocationPatterns() function',
+            detail: 'iOS/Location features may not work',
+            section: 'analyzer'
+          });
+        }
+
+        // Check that LOCATION_PATTERNS is referenced in translateToPlainEnglish
+        if (jsCode.includes('LOCATION_PATTERNS') && !jsCode.includes('checkLocationPatterns(msg')) {
+          issues.push({ 
+            type: 'warning', 
+            msg: 'LOCATION_PATTERNS defined but checkLocationPatterns() not called in translateToPlainEnglish',
+            detail: 'iOS/Location translations may not be working',
+            section: 'analyzer'
+          });
+        }
+
+        // Check for proper data.locations detection patterns
+        if (!jsCode.includes('[Site]') || !jsCode.includes('[Position]')) {
+          issues.push({ 
+            type: 'info', 
+            msg: 'Location detection may be missing iOS patterns like [Site] and [Position]',
+            section: 'analyzer'
+          });
+        }
+      }
+
+      // === HTML ELEMENT CHECKS ===
+      
+      const requiredElements = [
+        'logInput', 'analyzeBtn', 'clearBtn', 'status', 'summaryCard', 
+        'sessionsCard', 'errorsList', 'warningsList', 'searchInput', 'searchBody',
+        'timelineSection', 'helpModal', 'privacyModal'
+      ];
+
+      requiredElements.forEach(id => {
+        if (!code.includes(`id="${id}"`) && !code.includes(`id='${id}'`)) {
+          issues.push({ 
+            type: 'error', 
+            msg: `Missing required HTML element: id="${id}"`,
+            section: 'html'
+          });
+        }
+      });
+
+      // === DISPLAY RESULTS ===
+      
+      const errors = issues.filter(i => i.type === 'error').length;
+      const warnings = issues.filter(i => i.type === 'warning').length;
+      const infos = issues.filter(i => i.type === 'info').length;
+
+      // Quick checks summary
+      let checksHtml = '<div class="quick-checks">';
+      checksHtml += `<div class="check-item ${checks.doctype ? 'check-pass' : 'check-fail'}">${checks.doctype ? '✓' : '✕'} DOCTYPE</div>`;
+      checksHtml += `<div class="check-item ${checks.scriptTag ? 'check-pass' : 'check-fail'}">${checks.scriptTag ? '✓' : '✕'} Script tag</div>`;
+      checksHtml += `<div class="check-item ${checks.braces ? 'check-pass' : 'check-fail'}">${checks.braces ? '✓' : '✕'} Braces balanced</div>`;
+      checksHtml += `<div class="check-item ${checks.parens ? 'check-pass' : 'check-fail'}">${checks.parens ? '✓' : '✕'} Parentheses balanced</div>`;
+      checksHtml += `<div class="check-item ${checks.brackets ? 'check-pass' : 'check-fail'}">${checks.brackets ? '✓' : '✕'} Brackets balanced</div>`;
+      checksHtml += `<div class="check-item ${checks.templates ? 'check-pass' : 'check-fail'}">${checks.templates ? '✓' : '✕'} Template literals</div>`;
+      checksHtml += '</div>';
+
+      if (issues.length === 0) {
+        results.innerHTML = checksHtml + '<div class="success" style="margin-top:16px;"><span style="font-size: 20px;">✓</span> No issues found! Your code looks good.</div>';
+        stats.innerHTML = '<span class="badge badge-success">All Clear</span>';
+      } else {
+        const icons = { error: '✕', warning: '⚠', info: 'ℹ' };
+        const sections = { structure: 'HTML Structure', javascript: 'JavaScript Syntax', analyzer: 'Analyzer Functions', html: 'HTML Elements' };
+        
+        // Group by section
+        let html = checksHtml;
+        
+        Object.keys(sections).forEach(section => {
+          const sectionIssues = issues.filter(i => i.section === section);
+          if (sectionIssues.length > 0) {
+            html += `<div class="section-title">${sections[section]}</div>`;
+            sectionIssues.forEach(issue => {
+              html += `<div class="issue ${issue.type}">
+                <span class="icon">${icons[issue.type]}</span>
+                <div class="issue-content">
+                  <div>${issue.msg}</div>
+                  ${issue.detail ? `<div class="issue-detail">${escapeHtml(issue.detail)}</div>` : ''}
+                </div>
+              </div>`;
+            });
+          }
+        });
+        
+        results.innerHTML = html;
+        stats.innerHTML = `
+          ${errors > 0 ? `<span class="badge badge-error">${errors} Error${errors > 1 ? 's' : ''}</span>` : ''}
+          ${warnings > 0 ? `<span class="badge badge-warning">${warnings} Warning${warnings > 1 ? 's' : ''}</span>` : ''}
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
